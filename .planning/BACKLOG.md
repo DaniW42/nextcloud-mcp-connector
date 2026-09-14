@@ -650,3 +650,51 @@ parent, tag lookup failing, systemtags disabled).
 paths needs the check, so the lookup must be batched (one OCS/DAV round trip
 per answer, not per file) or the latency budget of D-xx-style answer times is
 gone. Measure before fixing the design.
+
+## BL-17: Derive the OAuth public URL from NEXTCLOUD_URL (AIO no-config installs)
+
+**Found:** 2026-09-14, jekkel's closing comment on issue #4 after confirming the
+421 fix. The fix derives the allowed hosts from `NEXTCLOUD_URL`, but the public
+URL that shapes the OAuth responses (issuer, endpoint URLs) still has to be set
+as an explicit deployment option. For AIO no-config installs that is the last
+remaining manual step.
+
+**What:** default the public URL from the environment (`NEXTCLOUD_URL` /
+AppAPI-provided values), same derivation family as the allowed-hosts fix. The
+explicit deployment option stays as an override and wins when set. Fail-closed
+when neither yields a usable absolute URL.
+
+**Why it matters:** one-click principle (BL-06 lineage): every removed
+mandatory option is one less broken install. Reported by the same user whose
+AIO setup surfaced the 421, so the demand is real, not hypothetical.
+
+**Why not now:** it changes OAuth response contents, so it needs its own tests
+(derivation, override precedence, garbage env values) and belongs in the next
+planned minor, not in a hotfix.
+
+## BL-18: OAuth 2.1 + Login Flow v2 for standalone Streamable HTTP (issue #5)
+
+**Found:** 2026-09-14, issue #5 by DaniW42 (simul8). Managed Nextcloud
+(Hetzner Storage Share) with user_oidc/SSO: no ExApp, no HaRP possible; the
+connector runs on their own infrastructure. They want per-user auth without
+distributing app passwords, and they offer a contribution.
+
+**What:** expose the existing hardened OAuth stack (provider, verifier,
+encrypted store, Login Flow v2, credential resolution) through a separate
+standalone OAuth entry point. Architecture direction agreed in the issue:
+option 1, a new entry point; standalone Basic, stdio, and ExApp behavior stay
+untouched. No second OAuth implementation: refactor the existing one into a
+deployment-independent component first.
+
+**Conditions stated in the issue reply:** PKCE required, DCR policy unchanged,
+refresh-token rotation, RFC 8707 resource binding, fail-closed defaults, tests
+for the new boundary including negative cases. Design note in the PR before the
+refactor.
+
+**Why it matters:** opens the connector to every managed-Nextcloud user the
+ExApp path cannot reach; the requester read the code deeply, so the
+contribution is credible.
+
+**Why not now:** external contribution incoming; our part is review and the
+component-cut agreement, not building it ourselves. Track the PR when it
+arrives.
