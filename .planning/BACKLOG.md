@@ -698,3 +698,21 @@ contribution is credible.
 **Why not now:** external contribution incoming; our part is review and the
 component-cut agreement, not building it ourselves. Track the PR when it
 arrives.
+
+## BL-19: Concurrent-Approval-Race in _decide fixen (zugesagt in Issue #5)
+
+**Found:** 2026-09-16, beim Code-Review von DaniW42s Standalone-OAuth-Design
+(Issue #5); von uns reproduziert: zwei parallele POST /authorize/decide auf
+denselben Flow liefern zwei Auth-Codes aus einer Zustimmung. Keine
+Rechteausweitung (gleiche auth_id, Widerruf raeumt beide Familien ab), aber
+die Einmaligkeits-Zusage des Codes und der _approve-Docstring sind verletzt.
+
+**Fix (klein):** _decide's Check-then-Act schliessen: Flow-Loeschung als
+Compare-and-Set, Code-Insert nur bei rowcount == 1, beides in einer
+BEGIN-IMMEDIATE-Transaktion, exakt nach dem Muster von redeem_auth_code
+(store.py:1024-1051). Plus Regressionstest mit zwei parallelen Decides
+(Repro-Skript lag im Scratchpad der Analyse-Session).
+
+**Verbindlichkeit:** In Issue #5 oeffentlich uebernommen ("I will take that
+one", comment 5692350130). VOR deren Standalone-PR ausliefern, weil die
+zweite Identitaetsquelle die Angriffsflaeche des Race vergroessert.
